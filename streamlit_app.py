@@ -1,8 +1,4 @@
-import os
-
 import streamlit as st
-import mysql.connector
-from mysql.connector import Error
 import pyodbc
 
 # Initialize session state variables for navigation and storing inputs

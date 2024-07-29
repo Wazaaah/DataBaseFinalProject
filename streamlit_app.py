@@ -1,5 +1,6 @@
 import streamlit as st
-import pyodbc
+import pymysql
+from pymysql import MySQLError
 
 # Initialize session state variables for navigation and storing inputs
 if 'page' not in st.session_state:
@@ -42,22 +43,24 @@ def go_back():
 
 # Function to connect to the database
 def create_connection():
-    connection_string = (
-        f'DRIVER={{ODBC Driver 18 for SQL Server}};'
-        f'SERVER=tcp:warmspeaker.database.windows.net,1433;'
-        f'DATABASE=CarWash;'
-        f'UID=Wazaah;'
-        f'PWD=Warmspeaker.12;'
-        'Encrypt=yes;'
-        'TrustServerCertificate=no;'
-        'Connection Timeout=30;'
-    )
+    timeout = 30
     try:
-        connection = pyodbc.connect(connection_string)
+        connection = pymysql.connect(
+            charset="utf8mb4",
+            connect_timeout=timeout,
+            cursorclass=pymysql.cursors.DictCursor,
+            db="CarWash",
+            host="mysql-3b3dc34f-database-final-project.g.aivencloud.com",
+            password="AVNS_duHFlgvzErLCq3tpn-g",
+            read_timeout=timeout,
+            port=10669,
+            user="avnadmin",
+            write_timeout=timeout,
+        )
         return connection
-    except pyodbc.Error as e:
-        st.error(f"Error connecting to database: {e}")
-        return None
+    except MySQLError as e:
+        st.error(f"Error connecting to MySQL: {e}")
+    return None
 
 # Function to fetch customer info by email
 def fetch_customer_info(email):
@@ -83,11 +86,10 @@ def fetch_customer_info(email):
         LEFT JOIN 
             Appointments a ON c.CustomerID = a.CustomerID
         WHERE 
-            c.Email = ?
+            c.Email = %s
         """
         cursor.execute(query, (email,))
-        columns = [column[0] for column in cursor.description]
-        result = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        result = cursor.fetchall()
         cursor.close()
         connection.close()
         return result
@@ -99,12 +101,11 @@ def authenticate_staff(staff_id, password):
     if connection:
         cursor = connection.cursor()
         # Check if the staff ID exists
-        check_id_query = "SELECT * FROM Employees WHERE EmployeeID = ?"
+        check_id_query = "SELECT * FROM Employees WHERE EmployeeID = %s"
         cursor.execute(check_id_query, (staff_id,))
         staff_record = cursor.fetchone()
 
         if staff_record:
-            staff_record = dict(zip([column[0] for column in cursor.description], staff_record))
             # Staff ID exists, now check the password
             if staff_record['Password'] == password:
                 cursor.close()
@@ -145,11 +146,10 @@ def fetch_staff_appointments(staff_id):
         JOIN 
             EmployeeAppointments ea ON a.AppointmentID = ea.AppointmentID
         WHERE 
-            ea.EmployeeID = ?
+            ea.EmployeeID = %s
         """
         cursor.execute(query, (staff_id,))
-        columns = [column[0] for column in cursor.description]
-        result = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        result = cursor.fetchall()
         cursor.close()
         connection.close()
         return result
@@ -162,14 +162,12 @@ def fetch_all_customers():
         cursor = connection.cursor()
         query = "SELECT * FROM Customers"
         cursor.execute(query)
-        columns = [column[0] for column in cursor.description]
-        result = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        result = cursor.fetchall()
         cursor.close()
         connection.close()
         return result
     return None
 
-# Function to add a new customer
 # Function to add a new customer
 def add_customer(first_name, last_name, email, phone_number):
     connection = create_connection()
@@ -177,7 +175,7 @@ def add_customer(first_name, last_name, email, phone_number):
         cursor = connection.cursor()
         add_query = """
         INSERT INTO Customers (FirstName, LastName, Email, PhoneNumber)
-        VALUES (?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s)
         """
         cursor.execute(add_query, (first_name, last_name, email, phone_number))
         connection.commit()
@@ -186,8 +184,6 @@ def add_customer(first_name, last_name, email, phone_number):
         return True
     return False
 
-
-# Function to update customer details
 # Function to update customer details
 def update_customer(customer_id, first_name, last_name, email, phone_number):
     connection = create_connection()
@@ -195,8 +191,8 @@ def update_customer(customer_id, first_name, last_name, email, phone_number):
         cursor = connection.cursor()
         update_query = """
         UPDATE Customers
-        SET FirstName = ?, LastName = ?, Email = ?, PhoneNumber = ?
-        WHERE CustomerID = ?
+        SET FirstName = %s, LastName = %s, Email = %s, PhoneNumber = %s
+        WHERE CustomerID = %s
         """
         cursor.execute(update_query, (first_name, last_name, email, phone_number, customer_id))
         connection.commit()
@@ -205,7 +201,6 @@ def update_customer(customer_id, first_name, last_name, email, phone_number):
         return True
     return False
 
-
 # Function to update appointment status
 def update_appointment_status(appointment_id, status):
     connection = create_connection()
@@ -213,8 +208,8 @@ def update_appointment_status(appointment_id, status):
         cursor = connection.cursor()
         update_query = """
         UPDATE Appointments
-        SET Status = ?
-        WHERE AppointmentID = ?
+        SET Status = %s
+        WHERE AppointmentID = %s
         """
         cursor.execute(update_query, (status, appointment_id))
         connection.commit()
@@ -277,7 +272,6 @@ def display_customers():
         go_back()
 
 # Function to add a new customer
-# Function to add a new customer
 def add_customer_page():
     st.title("Add New Customer")
     first_name = st.text_input("First Name")
@@ -295,8 +289,6 @@ def add_customer_page():
     if st.button("Back"):
         go_back()
 
-
-# Function to edit customer details
 # Function to edit customer details
 def edit_customer_page(customer_id):
     st.title("Edit Customer Details")
@@ -318,7 +310,6 @@ def edit_customer_page(customer_id):
         st.error("Customer not found.")
     if st.button("Back"):
         go_back()
-
 
 # Welcome Screen
 if st.session_state.page == "Welcome":
@@ -377,17 +368,14 @@ elif st.session_state.page == "Staff Login":
     staff_id = st.text_input("Staff ID")
     password = st.text_input("Password", type='password')
     if st.button("Login"):
-        if staff_id.isnumeric():
-            auth_status, staff_info = authenticate_staff(staff_id, password)
-            if auth_status == "authenticated":
-                st.session_state.staff_info = staff_info
-                st.session_state.page = "Staff Home"
-            elif auth_status == "incorrect_password":
-                st.error("Incorrect password. Please try again.")
-            elif auth_status == "id_not_found":
-                st.error("Staff ID not found.")
-        else:
-            st.error("Staff ID must be a number.")
+        auth_status, staff_info = authenticate_staff(staff_id, password)
+        if auth_status == "authenticated":
+            st.session_state.staff_info = staff_info
+            st.session_state.page = "Staff Home"
+        elif auth_status == "incorrect_password":
+            st.error("Incorrect password. Please try again.")
+        elif auth_status == "id_not_found":
+            st.error("Staff ID not found.")
     if st.button("Back"):
         go_back()
 

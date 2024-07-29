@@ -2,6 +2,18 @@ import streamlit as st
 import pymysql
 from pymysql import MySQLError
 
+st.markdown(
+    """
+    <style>
+    .stButton button {
+        font-size: 20px;
+        font-weight: bold;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # Initialize session state variables for navigation and storing inputs
 if 'page' not in st.session_state:
     st.session_state.page = "Welcome"
@@ -20,9 +32,11 @@ if 'staff_info' not in st.session_state:
 if 'customers' not in st.session_state:
     st.session_state.customers = None
 
+
 # Function to navigate between pages
 def navigate_to(page):
     st.session_state.page = page
+
 
 # Function to go back to the previous page
 def go_back():
@@ -40,6 +54,7 @@ def go_back():
         st.session_state.page = "Staff Home"
     else:
         st.session_state.page = "Welcome"
+
 
 # Function to connect to the database
 def create_connection():
@@ -61,6 +76,7 @@ def create_connection():
     except MySQLError as e:
         st.error(f"Error connecting to MySQL: {e}")
     return None
+
 
 # Function to fetch customer info by email
 def fetch_customer_info(email):
@@ -95,6 +111,7 @@ def fetch_customer_info(email):
         return result
     return None
 
+
 # Function to authenticate staff
 def authenticate_staff(staff_id, password):
     connection = create_connection()
@@ -120,6 +137,7 @@ def authenticate_staff(staff_id, password):
             connection.close()
             return "id_not_found", None
     return None, None
+
 
 # Function to fetch all appointments for staff view
 def fetch_staff_appointments(staff_id):
@@ -155,6 +173,7 @@ def fetch_staff_appointments(staff_id):
         return result
     return None
 
+
 # Function to fetch all customers for staff view
 def fetch_all_customers():
     connection = create_connection()
@@ -167,6 +186,7 @@ def fetch_all_customers():
         connection.close()
         return result
     return None
+
 
 # Function to add a new customer
 def add_customer(first_name, last_name, email, phone_number):
@@ -183,6 +203,7 @@ def add_customer(first_name, last_name, email, phone_number):
         connection.close()
         return True
     return False
+
 
 # Function to update customer details
 def update_customer(customer_id, first_name, last_name, email, phone_number):
@@ -201,6 +222,7 @@ def update_customer(customer_id, first_name, last_name, email, phone_number):
         return True
     return False
 
+
 # Function to update appointment status
 def update_appointment_status(appointment_id, status):
     connection = create_connection()
@@ -218,16 +240,26 @@ def update_appointment_status(appointment_id, status):
         return True
     return False
 
+
 # Function to display staff home page
 def display_staff_home():
     st.title("Staff Home")
     st.write(f"Welcome, {st.session_state.staff_info['FirstName']} {st.session_state.staff_info['LastName']}")
-    if st.button("View And Manage Appointments"):
-        st.session_state.page = "View Appointments"
-    if st.button("View And Manage Customers"):
-        st.session_state.page = "View Customers"
+    st.write()
+    st.write()
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("View And Manage Appointments"):
+            st.session_state.page = "View Appointments"
+    with col2:
+        if st.button("View And Manage Customers"):
+            st.session_state.page = "View Customers"
+
     if st.button("Back"):
         go_back()
+
 
 # Function to display all appointments for staff
 def display_appointments():
@@ -242,16 +274,21 @@ def display_appointments():
             st.write(f"Car Model: {appointment['CarModel']}")
             st.write(f"Car Year: {appointment['CarYear']}")
             st.write(f"Appointment Status: {appointment['AppointmentStatus']}")
-            new_status = st.selectbox(f"Update Status for Appointment Date: {appointment['AppointmentDate']}", ["Scheduled", "Completed", "Cancelled"], index=["Scheduled", "Completed", "Cancelled"].index(appointment['AppointmentStatus']))
+            new_status = st.selectbox(f"Update Status for Appointment Date: {appointment['AppointmentDate']}",
+                                      ["Scheduled", "Completed", "Cancelled"],
+                                      index=["Scheduled", "Completed", "Cancelled"].index(
+                                          appointment['AppointmentStatus']))
             if st.button(f"Update Status for {appointment['AppointmentDate']}"):
                 if update_appointment_status(appointment['AppointmentID'], new_status):
                     st.success(f"Status for Appointment Date: {appointment['AppointmentDate']} updated successfully!")
-                    st.session_state.appointments = fetch_staff_appointments(st.session_state.staff_info['EmployeeID'])  # Refresh the appointments
+                    st.session_state.appointments = fetch_staff_appointments(
+                        st.session_state.staff_info['EmployeeID'])  # Refresh the appointments
                     st.rerun()  # Reload the page to show updated status
                 else:
                     st.error("Failed to update status. Please try again.")
     if st.button("Back"):
         go_back()
+
 
 # Function to display all customers for staff
 def display_customers():
@@ -266,10 +303,18 @@ def display_customers():
             st.write(f"Phone Number: {customer['PhoneNumber']}")
             if st.button(f"Edit Details for {customer['CustomerID']}"):
                 st.session_state.page = f"Edit Customer {customer['CustomerID']}"
-    if st.button("Add New Customer"):
-        st.session_state.page = "Add Customer"
-    if st.button("Back"):
-        go_back()
+    st.write()
+    st.write()
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("Back"):
+            go_back()
+    with col2:
+        if st.button("Add New Customer"):
+            st.session_state.page = "Add Customer"
+
 
 # Function to add a new customer
 def add_customer_page():
@@ -278,16 +323,24 @@ def add_customer_page():
     last_name = st.text_input("Last Name")
     email = st.text_input("Email")
     phone_number = st.text_input("Phone Number")
-    if st.button("Add Customer"):
-        if add_customer(first_name, last_name, email, phone_number):
-            st.success("Customer added successfully!")
-            st.session_state.customers = fetch_all_customers()  # Refresh the customers list
-            st.session_state.page = "View Customers"
-            st.rerun()
-        else:
-            st.error("Failed to add customer. Please try again.")
-    if st.button("Back"):
-        go_back()
+    st.write()
+    st.write()
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("Back"):
+            go_back()
+    with col2:
+        if st.button("Add Customer"):
+            if add_customer(first_name, last_name, email, phone_number):
+                st.success("Customer added successfully!")
+                st.session_state.customers = fetch_all_customers()  # Refresh the customers list
+                st.session_state.page = "View Customers"
+                st.rerun()
+            else:
+                st.error("Failed to add customer. Please try again.")
+
 
 # Function to edit customer details
 def edit_customer_page(customer_id):
@@ -298,40 +351,64 @@ def edit_customer_page(customer_id):
         last_name = st.text_input("Last Name", value=customer['LastName'])
         email = st.text_input("Email", value=customer['Email'])
         phone_number = st.text_input("Phone Number", value=customer['PhoneNumber'])
-        if st.button("Update Customer"):
-            if update_customer(customer_id, first_name, last_name, email, phone_number):
-                st.success("Customer details updated successfully!")
-                st.session_state.customers = fetch_all_customers()  # Refresh the customers list
-                st.session_state.page = "View Customers"
-                st.rerun()
-            else:
-                st.error("Failed to update customer details. Please try again.")
+        st.write()
+        st.write()
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button("Back"):
+                go_back()
+        with col2:
+            if st.button("Update Customer"):
+                if update_customer(customer_id, first_name, last_name, email, phone_number):
+                    st.success("Customer details updated successfully!")
+                    st.session_state.customers = fetch_all_customers()  # Refresh the customers list
+                    st.session_state.page = "View Customers"
+                    st.rerun()
+                else:
+                    st.error("Failed to update customer details. Please try again.")
     else:
         st.error("Customer not found.")
-    if st.button("Back"):
-        go_back()
+
 
 # Welcome Screen
 if st.session_state.page == "Welcome":
-    st.title("I am a:")
-    if st.button("CUSTOMER"):
-        navigate_to("Customer Login")
-    if st.button("STAFF"):
-        navigate_to("Staff Login")
+    st.title("Austine's Car Wash")
+    st.subheader("Welcome to Austine's Car Wash")
+    st.image("qwer.jpg")
+    st.write()
+    st.text("Please Choose Your Role To Continue: ")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("Customer"):
+            navigate_to("Customer Login")
+    with col2:
+        if st.button("Staff"):
+            navigate_to("Staff Login")
 
 # Customer Login Screen
 elif st.session_state.page == "Customer Login":
     st.title("Customer Login")
     email = st.text_input("Email")
-    if st.button("Login"):
-        customer_info = fetch_customer_info(email)
-        if customer_info:
-            st.session_state.customer_info = customer_info
-            st.session_state.page = "Customer Home"
-        else:
-            st.error("Invalid email or customer not found.")
-    if st.button("Back"):
-        go_back()
+    st.write()
+    st.write()
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("Back"):
+            go_back()
+    with col2:
+        if st.button("Login"):
+            customer_info = fetch_customer_info(email)
+            if customer_info:
+                st.session_state.customer_info = customer_info
+                st.session_state.page = "Customer Home"
+            else:
+                st.error("Invalid email or customer not found.")
+
 
 # Customer Home Screen
 elif st.session_state.page == "Customer Home":
@@ -339,10 +416,16 @@ elif st.session_state.page == "Customer Home":
     customer_info = st.session_state.customer_info
     if customer_info:
         st.write(f"Welcome, {customer_info[0]['FirstName']} {customer_info[0]['LastName']}")
-        if st.button("View Info"):
-            st.session_state.page = "Customer Info"
-    if st.button("Back"):
-        go_back()
+
+        st.write()
+        st.write()
+        col1, col2 = st.columns(2)
+        with col2:
+            if st.button("View Info"):
+                st.session_state.page = "Customer Info"
+    with col1:
+        if st.button("Back"):
+            go_back()
 
 # Customer Info Screen
 elif st.session_state.page == "Customer Info":
@@ -367,17 +450,23 @@ elif st.session_state.page == "Staff Login":
     st.title("Staff Login")
     staff_id = st.text_input("Staff ID")
     password = st.text_input("Password", type='password')
-    if st.button("Login"):
-        auth_status, staff_info = authenticate_staff(staff_id, password)
-        if auth_status == "authenticated":
-            st.session_state.staff_info = staff_info
-            st.session_state.page = "Staff Home"
-        elif auth_status == "incorrect_password":
-            st.error("Incorrect password. Please try again.")
-        elif auth_status == "id_not_found":
-            st.error("Staff ID not found.")
-    if st.button("Back"):
-        go_back()
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("Back"):
+            go_back()
+    with col2:
+        if st.button("Login"):
+            auth_status, staff_info = authenticate_staff(staff_id, password)
+            if auth_status == "authenticated":
+                st.session_state.staff_info = staff_info
+                st.session_state.page = "Staff Home"
+            elif auth_status == "incorrect_password":
+                st.error("Incorrect password. Please try again.")
+            elif auth_status == "id_not_found":
+                st.error("Staff ID not found.")
+
 
 # Staff Home Screen
 elif st.session_state.page == "Staff Home":

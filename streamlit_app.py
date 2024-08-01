@@ -374,8 +374,8 @@ def edit_customer_page(customer_id):
 
 # Welcome Screen
 if st.session_state.page == "Welcome":
-    st.title("Austine's Car Wash")
-    st.subheader("Welcome to Austine's Car Wash")
+    st.title("Kellene's Car Wash")
+    st.subheader("Welcome to Kellene's Car Wash")
     st.image("qwer.jpg")
     st.write()
     st.text("Please Choose Your Role To Continue: ")
